@@ -3,49 +3,47 @@ const babel = require('babelify');
 const browserify = require('browserify');
 const source = require('vinyl-source-stream');
 const buffer = require('vinyl-buffer');
-const browserSync = require('browser-sync');
-const reload = browserSync.reload;
+const browserSync = require('browser-sync').create();
 const notify = require('gulp-notify');
-const sass = require('gulp-sass');
+const sass = require('sass');
+const gulpSass = require('gulp-sass')(sass);
 const concat = require('gulp-concat');
 const autoprefixer = require('autoprefixer');
+const postcss = require('gulp-postcss');
 
-gulp.task('styles', () => {
+function styles() {
     return gulp.src('./dev/styles/**/*.scss')
-        .pipe(sass().on('error', sass.logError))
-        // .pipe(autoprefixer())
+        .pipe(gulpSass().on('error', gulpSass.logError))
+        .pipe(postcss([autoprefixer()]))
         .pipe(concat('style.css'))
         .pipe(gulp.dest('./public/styles'))
-});
+        .pipe(browserSync.stream());
+}
 
-gulp.task('js', () => {
-    browserify('dev/scripts/app.js', {debug: true})
-        .transform('babelify', {
-            sourceMaps: true,
-            presets: ['env','react']
-        })
-        .bundle()
-        .on('error',notify.onError({
-            message: "Error: <%= error.message %>",
-            title: 'Error in JS 💀'
-        }))
-        .pipe(source('app.js'))
-        .pipe(buffer())
-        .pipe(gulp.dest('public/scripts'))
-        .pipe(reload({stream:true}));
-});
+function scripts() {
+    return browserify({
+        entries: ['./dev/scripts/app.js'],
+        debug: true
+    })
+    .transform(babel)
+    .bundle()
+    .pipe(source('bundle.js'))
+    .pipe(buffer())
+    .pipe(gulp.dest('./public/scripts'))
+    .pipe(browserSync.stream());
+}
 
-gulp.task('bs', () => {
+function serve() {
     browserSync.init({
-        server: {
-            baseDir: './'
-        }
+        server: './public'
     });
-});
 
-gulp.task('default', ['js','bs', 'styles'], () => {
-    gulp.watch('dev/**/*.js',['js']);
-    gulp.watch('dev/**/*.scss',['styles']);
-    gulp.watch('./public/styles/style.css',reload);
-    gulp.watch('./index.html',reload);
-});
+    gulp.watch('./dev/styles/**/*.scss', styles);
+    gulp.watch('./dev/scripts/**/*.js', scripts);
+    gulp.watch('./public/*.html').on('change', browserSync.reload);
+}
+
+exports.styles = styles;
+exports.scripts = scripts;
+exports.serve = serve;
+exports.default = gulp.series(styles, scripts, serve);

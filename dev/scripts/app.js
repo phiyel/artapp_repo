@@ -1,71 +1,67 @@
+// Load environment variables from .env file
+require('dotenv').config();
 
-
-//FkiIarCI
-
-//object to hold app
+// Object to hold app
 const art = {};
 
-//get art from the api
-art.getArt = (query = 'monkey') =>{
-	$.ajax({
-		url: 'https://www.rijksmuseum.nl/api/en/collection',
-		method: 'GET',
-		dataType: 'jsonp',
-		data:{
-			key: art.key,
-			format: 'jsonp',
-			q: query,
-			imgonly: true
-		}
-		//get art with monkeys
-	}).then((res) =>{
-		// console.log('it\'s back');
-		// console.log(res);
-		const artObject = res.artObjects;
-		console.log(artObject);
-		//call art.display
-		art.displayArt(artObject);
-	});
+// Use the API key from environment variables
+art.key = process.env.RIJKSMUSEUM_API_KEY;
+
+// Display art on page
+art.displayArt = (allArt) => {
+    console.log('displayArt allArt', allArt);
+    $('#artwork').empty();
+
+    if (!Array.isArray(allArt)) {
+        console.error('Expected an array but got:', allArt);
+        return;
+    }
+
+    // Manually filter through to show art pieces that have images
+    const filteredArt = [];
+    allArt.forEach((artPiece) => {
+        if (artPiece.webImage != null) {
+            filteredArt.push(artPiece);
+        }
+    });
+
+    filteredArt.forEach((artPiece) => {
+        const $title = $('<h2>').text(artPiece.title);
+        const $image = $('<img>').attr('src', artPiece.webImage.url);
+        const $artPiece = $('<div>').addClass('art-piece').append($title, $image);
+        $('#artwork').append($artPiece);
+    });
 };
 
-//display ar on page
-art.displayArt = (allArt) =>{
-	console.log('displayArt allArt', allArt);
-	$('#artwork').empty();
+// Get art from the API
+art.getArt = async (query) => {
+    try {
+        const response = await fetch(`https://www.rijksmuseum.nl/api/en/collection?key=${art.key}&format=json&q=${query}&imgonly=true`);
+		console.log('response', response);
+        const data = await response.json();
+		console.log('API response:', data);
+        const artObject = Array.isArray(data.artObjects) ? data.artObjects : [];
+        console.log('API response artObjects:', artObject);
+        // Call art.display
+        art.displayArt(artObject);
+    } catch (error) {
+        console.error('Error fetching art:', error);
+        art.displayArt([]);
+    }
+};
 
-	//filter through to show art piece that has imgs
-	allArt.filter((artPiece) =>{
-		return artPiece.webImage != null;
-	}).forEach((artPiece) =>{
-		const $title = $('<h2>').text(artPiece.title);
-		//console.log($title);
-		const $artist = $('<p>').addClass('artist').text(artPiece.principalOrFirstMaker);
-		const $img = $('<img>').attr('src', artPiece.webImage.url);
-		$('#artwork').append($title, $artist, $img);
-	});
-}
+art.init = () => {
+    // Global variables here & other code
+    console.log('hiii');
+    art.getArt('default query'); // Provide a default query or handle it appropriately
+    // Event listener for change of dropdown
+    $('#animal').on('change', function () {
+        const animal = $(this).val();
+        art.getArt(animal); // Fetch art based on the selected animal
+    });
+};
 
-art.init = () =>{
-	//global variables here & other code
-	art.key = 'FkiIarCI';
-	console.log('hiii');
-	art.getArt();
-	//event listener for change of dropdown
-	$('#animal').on('change', function(){
-		//console.log('change');
-		//get value of option they've selected
-		const animal = $(this).val();
-		console.log(animal);
-		art.getArt(animal);
-
-		const animalName = $(this).find(':selected').text();
-		$('h1').text(`Art with ${animalName}`);
-	});
-}
-
-
-//main func to run app
-$(function(){
-	art.init();
-
+// Initialize the app
+$(document).ready(() => {
+    art.init();
 });
