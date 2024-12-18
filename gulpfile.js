@@ -1,3 +1,6 @@
+// Load environment variables from .env file
+const envLoader = require('gulp-env-loader');
+envLoader();
 const gulp = require('gulp');
 const babel = require('babelify');
 const browserify = require('browserify');
@@ -10,6 +13,7 @@ const gulpSass = require('gulp-sass')(sass);
 const concat = require('gulp-concat');
 const autoprefixer = require('autoprefixer');
 const postcss = require('gulp-postcss');
+
 
 function styles() {
     return gulp.src('./dev/styles/**/*.scss')
